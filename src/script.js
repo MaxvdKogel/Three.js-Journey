@@ -32,9 +32,42 @@ scene.add(cube)
 
 //sizes
 const sizes = {
-    width: 800,
-    height: 600
+    width: window.innerWidth,
+    height: window.innerHeight
 }
+
+window.addEventListener('resize', () => {
+    //Update sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
+
+    //Update camera
+    camera.aspect = sizes.width / sizes.height
+    camera.updateProjectionMatrix()
+
+    //Update renderer
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) // In case they drag browser to another screen with another pixel ratio
+})
+
+//double click for fullscreen (webkit for safari)
+window.addEventListener('dblclick', () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+    
+    if(!fullscreenElement) {
+        if(canvas.requestFullscreen) {
+            canvas.requestFullscreen()
+        } else if(canvas.webkitRequestFullscreen) {
+            canvas.webkitRequestFullscreen()
+        }
+    } else {
+        if(document.exitFullscreen) {
+            document.exitFullscreen()
+        } else if(document.webkitExitFullScreen) {
+            document.webkit.webkitExitFullScreen()
+        }
+    }
+})
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
@@ -43,13 +76,14 @@ scene.add(camera)
 
 //controls
 const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true;
+controls.enableDamping = true
 
 //renderer
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas
 })
 renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 //clock
 const clock = new THREE.Clock()
