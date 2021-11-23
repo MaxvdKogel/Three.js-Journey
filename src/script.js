@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { BufferAttribute } from 'three'
 
 /**
  * Cursor
@@ -24,11 +25,36 @@ window.addEventListener('mousemove', (event) => {
 const scene = new THREE.Scene()
 
 //objects
-const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(1,1,1),
-    new THREE.MeshBasicMaterial({color: 0xff0000})
-)
-scene.add(cube)
+
+// const positionsArray = new Float32Array([
+//     0,0,0,
+//     0,1,0,
+//     1,0,0
+// ])
+
+// const positionsAttribute = new BufferAttribute(positionsArray, 3)
+
+// const geometry = new THREE.BufferGeometry()
+// geometry.setAttribute('position', positionsAttribute)
+
+const count = 10;
+const positionsArray = new Float32Array(count * 3 * 3)
+
+for(let i = 0; i < count * 3 * 3; i++) {
+    positionsArray[i] = (Math.random() - .5) * 5
+}
+
+const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3)
+const geometry = new THREE.BufferGeometry()
+geometry.setAttribute('position', positionsAttribute)
+
+const material = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    wireframe: true
+})
+
+const mesh = new THREE.Mesh(geometry, material)
+scene.add(mesh)
 
 //sizes
 const sizes = {
