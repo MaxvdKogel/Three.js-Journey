@@ -1,7 +1,30 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { BufferAttribute } from 'three'
+import gsap from 'gsap'
+import * as lil from 'lil-gui'
+
+/**
+ * Debug
+ */
+const gui = new lil.GUI()
+gui.close()
+
+
+const animations = {
+    spin: () => {
+        gsap.to(cube.rotation, {
+            duration: 1,
+            y: cube.rotation.y + Math.PI * 2
+        })
+    },
+    flip: () => {
+        gsap.to(cube.rotation, {
+            duration: 1,
+            x: cube.rotation.x + Math.PI * 2
+        })
+    }
+}
 
 /**
  * Cursor
@@ -26,35 +49,23 @@ const scene = new THREE.Scene()
 
 //objects
 
-// const positionsArray = new Float32Array([
-//     0,0,0,
-//     0,1,0,
-//     1,0,0
-// ])
+const cube = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(1,1,1),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000
+    })
+)
+scene.add(cube)
 
-// const positionsAttribute = new BufferAttribute(positionsArray, 3)
+gui.add(cube.position, 'x', -3, 3, .01)
+gui.add(cube.position, 'y', -3, 3, .01)
+gui.add(cube.position, 'z', -3, 3, .01)
+gui.add(cube, 'visible')
+gui.add(cube.material, 'wireframe')
+gui.addColor(cube.material, 'color')
+gui.add(animations, 'spin')
+gui.add(animations, 'flip')
 
-// const geometry = new THREE.BufferGeometry()
-// geometry.setAttribute('position', positionsAttribute)
-
-const count = 10;
-const positionsArray = new Float32Array(count * 3 * 3)
-
-for(let i = 0; i < count * 3 * 3; i++) {
-    positionsArray[i] = (Math.random() - .5) * 5
-}
-
-const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3)
-const geometry = new THREE.BufferGeometry()
-geometry.setAttribute('position', positionsAttribute)
-
-const material = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    wireframe: true
-})
-
-const mesh = new THREE.Mesh(geometry, material)
-scene.add(mesh)
 
 //sizes
 const sizes = {
@@ -97,7 +108,7 @@ window.addEventListener('dblclick', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 3
+camera.position.z = 5
 scene.add(camera)
 
 //controls
