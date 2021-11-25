@@ -40,6 +40,49 @@ window.addEventListener('mousemove', (event) => {
 })
 
 /**
+ * Textures
+ */
+const loadingManager = new THREE.LoadingManager()
+// loadingManager.onStart = () => {
+//     console.log('start loading textures')
+// }
+
+// loadingManager.onProgress = () => {
+//     console.log('textures loading')
+// }
+
+// loadingManager.onLoad = () => {
+//     console.log('textures loaded')
+// }
+
+// loadingManager.onError = () => {
+//     console.log('error while loading textures')
+// }
+
+const textureLoader = new THREE.TextureLoader(loadingManager)
+const colorTexture = textureLoader.load('/checkerboard-1024x1024.png')
+const alphaTexture = textureLoader.load('/alpha.jpg')
+const heightTexture = textureLoader.load('/height.jpg')
+const ambientOcclusionTexture = textureLoader.load('/ambientOcclusion.jpg')
+const metalnessTexture = textureLoader.load('/metalness.jpg')
+const normalTexture = textureLoader.load('/normal.jpg')
+const roughnessTexture = textureLoader.load('/roughness.jpg')
+
+// colorTexture.repeat.x = 2
+// colorTexture.wrapS = THREE.MirroredRepeatWrapping
+
+// colorTexture.repeat.y = 2
+// colorTexture.wrapT= THREE.MirroredRepeatWrapping
+
+// colorTexture.offset.x = 0
+// colorTexture.rotation = Math.PI * .5
+// colorTexture.center.x = .5
+// colorTexture.center.y = .5
+
+colorTexture.generateMipmaps = false
+colorTexture.minFilter = THREE.NearestFilter
+
+/**
  * Base
  */
  const canvas = document.querySelector('.webgl')
@@ -52,9 +95,10 @@ const scene = new THREE.Scene()
 const cube = new THREE.Mesh(
     new THREE.BoxBufferGeometry(1,1,1),
     new THREE.MeshBasicMaterial({
-        color: 0xff0000
+        map: colorTexture
     })
 )
+console.log(cube.geometry.attributes.uv)
 scene.add(cube)
 
 gui.add(cube.position, 'x', -3, 3, .01)
