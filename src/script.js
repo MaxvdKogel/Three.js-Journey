@@ -9,6 +9,7 @@ import { TorusBufferGeometry } from 'three'
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
+const cubeTextureLoader = new THREE.CubeTextureLoader()
 
 const colorTexture = textureLoader.load('color.jpg')
 const alphaTexture = textureLoader.load('alpha.jpg')
@@ -17,9 +18,17 @@ const ambientOcclusionTexture = textureLoader.load('ambientOcclusion.jpg')
 const metalnessTexture = textureLoader.load('metalness.jpg')
 const normalTexture = textureLoader.load('normal.jpg')
 const roughnessTexture = textureLoader.load('roughness.jpg')
-
 const gradientTexture = textureLoader.load('3.jpg')
 const matcapTexture = textureLoader.load('1.png')
+
+const environmentMapTexture = cubeTextureLoader.load([
+    '/environmentMaps/px.jpg',
+    '/environmentMaps/nx.jpg',
+    '/environmentMaps/py.jpg',
+    '/environmentMaps/ny.jpg',
+    '/environmentMaps/pz.jpg',
+    '/environmentMaps/nz.jpg'
+])
 
 /**
  * Debug UI
@@ -50,41 +59,44 @@ const scene = new THREE.Scene()
 
 //objects
 
-// const material = new THREE.MeshBasicMaterial({
-//     map: colorTexture,
-//     transparent: true,
-//     alphaMap: alphaTexture,
-//     flatShading: true
-// })
-
 const material = new THREE.MeshStandardMaterial({
-    map: colorTexture,
-    side: THREE.DoubleSide,
-    transparent: true,
-    aoMap: ambientOcclusionTexture,
-    displacementMap: heightTexture,
-    displacementScale: .05,
-    metalnessMap: metalnessTexture,
-    roughnessMap: roughnessTexture,
-    normalMap: normalTexture,
-    alphaMap: alphaTexture
+    metalness: .95,
+    envMap: environmentMapTexture
 })
+material.roughness = .05
+// const material = new THREE.MeshStandardMaterial({
+//     map: colorTexture,
+//     side: THREE.DoubleSide,
+//     transparent: true,
+//     aoMap: ambientOcclusionTexture,
+//     displacementMap: heightTexture,
+//     displacementScale: .05,
+//     metalnessMap: metalnessTexture,
+//     roughnessMap: roughnessTexture,
+//     normalMap: normalTexture,
+//     alphaMap: alphaTexture
+// })
 
 gui.add(material, 'metalness', 0, 1, 0.001)
 gui.add(material, 'roughness', 0, 1, 0.001)
-gui.add(material, 'aoMapIntensity', 0, 5, 0.001)
-gui.add(material, 'displacementScale', 0, .5)
-gui.add(material.normalScale, 'x', 0, 5).name("normalScaleX")
-gui.add(material.normalScale, 'y', 0, 5).name("normalScaleY")
+// gui.add(material, 'aoMapIntensity', 0, 5, 0.001)
+// gui.add(material, 'displacementScale', 0, .5)
+// gui.add(material.normalScale, 'x', 0, 5).name("normalScaleX")
+// gui.add(material.normalScale, 'y', 0, 5).name("normalScaleY")
 
-const plane = new THREE.Mesh(
-    new THREE.PlaneBufferGeometry(1,1,100,100),
+// const plane = new THREE.Mesh(
+//     new THREE.PlaneBufferGeometry(1,1,100,100),
+//     material
+// )
+// plane.geometry.attributes.uv2 = plane.geometry.attributes.uv
+
+const sphere = new THREE.Mesh(
+    new THREE.SphereBufferGeometry(.5, 64, 32),
     material
 )
-plane.geometry.attributes.uv2 = plane.geometry.attributes.uv
 
 
-scene.add(plane)
+scene.add(sphere)
 
 /**
  * Lights
@@ -139,7 +151,7 @@ window.addEventListener('dblclick', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 5
+camera.position.z = 1.5
 scene.add(camera)
 
 //controls
