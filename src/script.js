@@ -3,38 +3,22 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import gsap from 'gsap'
 import * as lil from 'lil-gui'
-import { TorusBufferGeometry } from 'three'
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-const cubeTextureLoader = new THREE.CubeTextureLoader()
 
-const colorTexture = textureLoader.load('color.jpg')
-const alphaTexture = textureLoader.load('alpha.jpg')
-const heightTexture = textureLoader.load('height.jpg')
-const ambientOcclusionTexture = textureLoader.load('ambientOcclusion.jpg')
-const metalnessTexture = textureLoader.load('metalness.jpg')
-const normalTexture = textureLoader.load('normal.jpg')
-const roughnessTexture = textureLoader.load('roughness.jpg')
-const gradientTexture = textureLoader.load('3.jpg')
-const matcapTexture = textureLoader.load('1.png')
-
-const environmentMapTexture = cubeTextureLoader.load([
-    '/environmentMaps/px.jpg',
-    '/environmentMaps/nx.jpg',
-    '/environmentMaps/py.jpg',
-    '/environmentMaps/ny.jpg',
-    '/environmentMaps/pz.jpg',
-    '/environmentMaps/nz.jpg'
-])
+const matcap = textureLoader.load('matcaps/7.png')
+const material = new THREE.MeshMatcapMaterial({ matcap: matcap })
 
 /**
  * Debug UI
  */
 
-const gui = new lil.GUI()
+// const gui = new lil.GUI()
 
 /**
  * Cursor
@@ -57,58 +41,52 @@ window.addEventListener('mousemove', (event) => {
 //scene
 const scene = new THREE.Scene()
 
-//objects
+/**
+ * Fonts
+ */
 
-const material = new THREE.MeshStandardMaterial({
-    metalness: .95,
-    envMap: environmentMapTexture
-})
-material.roughness = .05
-// const material = new THREE.MeshStandardMaterial({
-//     map: colorTexture,
-//     side: THREE.DoubleSide,
-//     transparent: true,
-//     aoMap: ambientOcclusionTexture,
-//     displacementMap: heightTexture,
-//     displacementScale: .05,
-//     metalnessMap: metalnessTexture,
-//     roughnessMap: roughnessTexture,
-//     normalMap: normalTexture,
-//     alphaMap: alphaTexture
-// })
+const fontLoader = new FontLoader()
 
-gui.add(material, 'metalness', 0, 1, 0.001)
-gui.add(material, 'roughness', 0, 1, 0.001)
-// gui.add(material, 'aoMapIntensity', 0, 5, 0.001)
-// gui.add(material, 'displacementScale', 0, .5)
-// gui.add(material.normalScale, 'x', 0, 5).name("normalScaleX")
-// gui.add(material.normalScale, 'y', 0, 5).name("normalScaleY")
-
-// const plane = new THREE.Mesh(
-//     new THREE.PlaneBufferGeometry(1,1,100,100),
-//     material
-// )
-// plane.geometry.attributes.uv2 = plane.geometry.attributes.uv
-
-const sphere = new THREE.Mesh(
-    new THREE.SphereBufferGeometry(.5, 64, 32),
-    material
+fontLoader.load(
+    '/fonts/helvetiker_regular.typeface.json', (font) => {
+        const textGeometry = new TextGeometry(
+            'Three.js', {
+                font,
+                size: .5,
+                height: .2,
+                curveSegments: 6,
+                bevelEnabled: true,
+                bevelThickness: .03,
+                bevelSize: .02,
+                bevelOffset: 0,
+                bevelSegments: 5
+            }
+        )
+        textGeometry.center()
+        
+        const text = new THREE.Mesh(textGeometry, material)
+        scene.add(text)
+    }
 )
 
-
-scene.add(sphere)
-
 /**
- * Lights
+ * Objects
  */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
-scene.add(ambientLight)
+const donutGeometry = new THREE.TorusBufferGeometry(.3, .2, 20, 45)
+for(let i = 0; i < 1000; i++) {
+    const donut = new THREE.Mesh(donutGeometry, material)
 
-const pointLight = new THREE.PointLight(0xffffff, 0.5)
-pointLight.position.x = 2
-pointLight.position.y = 3
-pointLight.position.z = 4
-scene.add(pointLight)
+    donut.position.x = (Math.random() - .5) * 50
+    donut.position.y = (Math.random() - .5) * 50
+    donut.position.z = (Math.random() - .5) * 50
+
+    donut.rotation.x = Math.random() * Math.PI
+    donut.rotation.y = Math.random() * Math.PI
+
+    const scale = Math.random()
+    donut.scale.set(scale, scale, scale)
+    scene.add(donut)
+}
 
 //sizes
 const sizes = {
@@ -151,7 +129,7 @@ window.addEventListener('dblclick', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 1.5
+camera.position.z = 5
 scene.add(camera)
 
 //controls
@@ -174,11 +152,7 @@ const tick = () => {
     //time
     const elapsedTime = clock.getElapsedTime()
 
-    //update objects
-    // plane.rotation.y = .1 * elapsedTime
-
-    // plane.rotation.x = .15 * elapsedTime
-
+    //damping
     controls.update()
 
     //render
