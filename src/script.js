@@ -3,28 +3,29 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import gsap from 'gsap'
 import * as lil from 'lil-gui'
+import { TorusBufferGeometry } from 'three'
 
 /**
- * Debug
+ * Textures
  */
+const textureLoader = new THREE.TextureLoader()
+
+const colorTexture = textureLoader.load('color.jpg')
+const alphaTexture = textureLoader.load('alpha.jpg')
+const heightTexture = textureLoader.load('height.jpg')
+const ambientOcclusionTexture = textureLoader.load('ambientOcclusion.jpg')
+const metalnessTexture = textureLoader.load('metalness.jpg')
+const normalTexture = textureLoader.load('normal.jpg')
+const roughnessTexture = textureLoader.load('roughness.jpg')
+
+const gradientTexture = textureLoader.load('3.jpg')
+const matcapTexture = textureLoader.load('1.png')
+
+/**
+ * Debug UI
+ */
+
 const gui = new lil.GUI()
-gui.close()
-
-
-const animations = {
-    spin: () => {
-        gsap.to(cube.rotation, {
-            duration: 1,
-            y: cube.rotation.y + Math.PI * 2
-        })
-    },
-    flip: () => {
-        gsap.to(cube.rotation, {
-            duration: 1,
-            x: cube.rotation.x + Math.PI * 2
-        })
-    }
-}
 
 /**
  * Cursor
@@ -40,49 +41,6 @@ window.addEventListener('mousemove', (event) => {
 })
 
 /**
- * Textures
- */
-const loadingManager = new THREE.LoadingManager()
-// loadingManager.onStart = () => {
-//     console.log('start loading textures')
-// }
-
-// loadingManager.onProgress = () => {
-//     console.log('textures loading')
-// }
-
-// loadingManager.onLoad = () => {
-//     console.log('textures loaded')
-// }
-
-// loadingManager.onError = () => {
-//     console.log('error while loading textures')
-// }
-
-const textureLoader = new THREE.TextureLoader(loadingManager)
-const colorTexture = textureLoader.load('/checkerboard-1024x1024.png')
-const alphaTexture = textureLoader.load('/alpha.jpg')
-const heightTexture = textureLoader.load('/height.jpg')
-const ambientOcclusionTexture = textureLoader.load('/ambientOcclusion.jpg')
-const metalnessTexture = textureLoader.load('/metalness.jpg')
-const normalTexture = textureLoader.load('/normal.jpg')
-const roughnessTexture = textureLoader.load('/roughness.jpg')
-
-// colorTexture.repeat.x = 2
-// colorTexture.wrapS = THREE.MirroredRepeatWrapping
-
-// colorTexture.repeat.y = 2
-// colorTexture.wrapT= THREE.MirroredRepeatWrapping
-
-// colorTexture.offset.x = 0
-// colorTexture.rotation = Math.PI * .5
-// colorTexture.center.x = .5
-// colorTexture.center.y = .5
-
-colorTexture.generateMipmaps = false
-colorTexture.minFilter = THREE.NearestFilter
-
-/**
  * Base
  */
  const canvas = document.querySelector('.webgl')
@@ -92,24 +50,53 @@ const scene = new THREE.Scene()
 
 //objects
 
-const cube = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(1,1,1),
-    new THREE.MeshBasicMaterial({
-        map: colorTexture
-    })
+// const material = new THREE.MeshBasicMaterial({
+//     map: colorTexture,
+//     transparent: true,
+//     alphaMap: alphaTexture,
+//     flatShading: true
+// })
+
+const material = new THREE.MeshStandardMaterial({
+    map: colorTexture,
+    side: THREE.DoubleSide,
+    transparent: true,
+    aoMap: ambientOcclusionTexture,
+    displacementMap: heightTexture,
+    displacementScale: .05,
+    metalnessMap: metalnessTexture,
+    roughnessMap: roughnessTexture,
+    normalMap: normalTexture,
+    alphaMap: alphaTexture
+})
+
+gui.add(material, 'metalness', 0, 1, 0.001)
+gui.add(material, 'roughness', 0, 1, 0.001)
+gui.add(material, 'aoMapIntensity', 0, 5, 0.001)
+gui.add(material, 'displacementScale', 0, .5)
+gui.add(material.normalScale, 'x', 0, 5).name("normalScaleX")
+gui.add(material.normalScale, 'y', 0, 5).name("normalScaleY")
+
+const plane = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(1,1,100,100),
+    material
 )
-console.log(cube.geometry.attributes.uv)
-scene.add(cube)
+plane.geometry.attributes.uv2 = plane.geometry.attributes.uv
 
-gui.add(cube.position, 'x', -3, 3, .01)
-gui.add(cube.position, 'y', -3, 3, .01)
-gui.add(cube.position, 'z', -3, 3, .01)
-gui.add(cube, 'visible')
-gui.add(cube.material, 'wireframe')
-gui.addColor(cube.material, 'color')
-gui.add(animations, 'spin')
-gui.add(animations, 'flip')
 
+scene.add(plane)
+
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+scene.add(ambientLight)
+
+const pointLight = new THREE.PointLight(0xffffff, 0.5)
+pointLight.position.x = 2
+pointLight.position.y = 3
+pointLight.position.z = 4
+scene.add(pointLight)
 
 //sizes
 const sizes = {
@@ -176,10 +163,10 @@ const tick = () => {
     const elapsedTime = clock.getElapsedTime()
 
     //update objects
-    // camera.position.x = Math.sin(cursor.x * Math.PI * 2) * 3
-    // camera.position.z = Math.cos(cursor.x * Math.PI * 2) * 3
-    // camera.position.y = cursor.y * 5
-    // camera.lookAt(cube.position)
+    // plane.rotation.y = .1 * elapsedTime
+
+    // plane.rotation.x = .15 * elapsedTime
+
     controls.update()
 
     //render
