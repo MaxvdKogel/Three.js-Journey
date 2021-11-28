@@ -5,20 +5,18 @@ import gsap from 'gsap'
 import * as lil from 'lil-gui'
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
+import { GeometryUtils, MeshStandardMaterial, Plane, WireframeGeometry } from 'three'
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
 
-const matcap = textureLoader.load('matcaps/7.png')
-const material = new THREE.MeshMatcapMaterial({ matcap: matcap })
-
 /**
  * Debug UI
  */
 
-// const gui = new lil.GUI()
+const gui = new lil.GUI()
 
 /**
  * Cursor
@@ -42,53 +40,75 @@ window.addEventListener('mousemove', (event) => {
 const scene = new THREE.Scene()
 
 /**
- * Fonts
+ * Lights
  */
+//ambient light
+const ambientLight = new THREE.AmbientLight(0xffffff, .5)
+const ambientLightFolder = gui.addFolder('Ambient light')
+ambientLightFolder.add(ambientLight, 'intensity', 0, 2)
 
-const fontLoader = new FontLoader()
+//directional light
+const directionalLight = new THREE.DirectionalLight(0xffffff, .5)
+directionalLight.position.set(2, 2, -1)
+directionalLight.castShadow = true
+directionalLight.shadow.mapSize.width = 1024
+directionalLight.shadow.mapSize.height = 1024
+directionalLight.shadow.camera.near = 1
+directionalLight.shadow.camera.far = 6
+directionalLight.shadow.camera.top = 2
+directionalLight.shadow.camera.right = 2
+directionalLight.shadow.camera.bottom = -2
+directionalLight.shadow.camera.left = -2
+directionalLight.shadow.radius = 10
+const directionalLightFolder = gui.addFolder('Directional light')
+directionalLightFolder.add(directionalLight.shadow, 'radius', 0, 30).name('Shadow radius')
 
-fontLoader.load(
-    '/fonts/helvetiker_regular.typeface.json', (font) => {
-        const textGeometry = new TextGeometry(
-            'Three.js', {
-                font,
-                size: .5,
-                height: .2,
-                curveSegments: 6,
-                bevelEnabled: true,
-                bevelThickness: .03,
-                bevelSize: .02,
-                bevelOffset: 0,
-                bevelSegments: 5
-            }
-        )
-        textGeometry.center()
-        
-        const text = new THREE.Mesh(textGeometry, material)
-        scene.add(text)
-    }
-)
+//directional light helper
+const directionalLightHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+directionalLightHelper.visible = false
+directionalLightFolder.add(directionalLightHelper, 'visible').name('Shadow helper visible')
+
+//spotlight
+const spotLight = new THREE.SpotLight(0xffffff, .5)
+spotLight.position.set(0,2,2)
+
+const spotLightFolder = gui.addFolder('Spot light')
+
+spotLight.castShadow = true
+console.log(spotLight);
+spotLight.shadow.mapSize.x = 1024
+spotLight.shadow.mapSize.y = 1024
+spotLight.shadow.camera.near = 1
+spotLight.shadow.camera.far = 6
+spotLight.shadow.camera.fov = 30
+
+//spotlight helper
+const spotLightHelper = new THREE.CameraHelper(spotLight.shadow.camera)
+spotLightHelper.visible = false
+spotLightFolder.add(spotLightHelper, 'visible').name('Shadow helper visible')
+
+scene.add(ambientLight, directionalLight, directionalLightHelper, spotLight, spotLightHelper)
 
 /**
  * Objects
  */
-const donutGeometry = new THREE.TorusBufferGeometry(.3, .2, 20, 45)
-for(let i = 0; i < 1000; i++) {
-    const donut = new THREE.Mesh(donutGeometry, material)
+const material = new THREE.MeshStandardMaterial({ metalness: .4, side: THREE.DoubleSide})
 
-    donut.position.x = (Math.random() - .5) * 50
-    donut.position.y = (Math.random() - .5) * 50
-    donut.position.z = (Math.random() - .5) * 50
+const sphereGeometry = new THREE.SphereBufferGeometry(.5, 32, 32)
+const sphere = new THREE.Mesh(sphereGeometry, material)
+sphere.castShadow = true
 
-    donut.rotation.x = Math.random() * Math.PI
-    donut.rotation.y = Math.random() * Math.PI
+const planeGeometry = new THREE.PlaneBufferGeometry(10, 10)
+const plane = new THREE.Mesh(planeGeometry, material)
+plane.rotation.x = Math.PI * 1.5
+plane.position.y = -.5
+plane.receiveShadow = true
 
-    const scale = Math.random()
-    donut.scale.set(scale, scale, scale)
-    scene.add(donut)
-}
+scene.add(sphere, plane)
 
-//sizes
+/**
+ * sizes
+ */
 const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
@@ -142,6 +162,7 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.shadowMap.enabled = true
 
 //clock
 const clock = new THREE.Clock()
