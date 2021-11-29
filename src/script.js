@@ -3,22 +3,52 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import gsap from 'gsap'
 import * as lil from 'lil-gui'
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
-import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
-import { GeometryUtils, MeshStandardMaterial, Plane, WireframeGeometry } from 'three'
+import { DoubleSide } from 'three'
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-const bakedShadow = textureLoader.load('simpleShadow.jpg')
+
+//door
+const doorColorTexture = textureLoader.load('/textures/door/color.jpg')
+const doorAlphaTexture = textureLoader.load('/textures/door/alpha.jpg')
+const doorAmbientOcclusionTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg')
+const doorHeightTexture = textureLoader.load('/textures/door/height.jpg')
+const doorMetalnessTexture = textureLoader.load('/textures/door/metalness.jpg')
+const doorNormalTexture = textureLoader.load('/textures/door/normal.jpg')
+const doorRoughnessTexture = textureLoader.load('/textures/door/roughness.jpg')
+
+//walls
+const bricksColorTexture = textureLoader.load('/textures/bricks/color.jpg')
+const bricksAmbientOcclusionTexture = textureLoader.load('/textures/bricks/ambientOcclusion.jpg')
+const bricksNormalTexture = textureLoader.load('/textures/bricks/normal.jpg')
+const bricksRoughnessTexture = textureLoader.load('/textures/bricks/roughness.jpg')
+
+
+//grass
+const grassColorTexture = textureLoader.load('textures/grass/color.jpg')
+grassColorTexture.repeat.set(8, 8)
+grassColorTexture.wrapS = THREE.RepeatWrapping
+grassColorTexture.wrapT = THREE.RepeatWrapping
+const grassAmbientOcclusionTexture = textureLoader.load('textures/grass/ambientOcclusion.jpg')
+grassAmbientOcclusionTexture.repeat.set(8, 8)
+grassAmbientOcclusionTexture.wrapT = THREE.RepeatWrapping
+grassAmbientOcclusionTexture.wrapS = THREE.RepeatWrapping
+const grassNormalTexture = textureLoader.load('textures/grass/normal.jpg')
+grassNormalTexture.repeat.set(8, 8)
+grassNormalTexture.wrapS = THREE.RepeatWrapping
+grassNormalTexture.wrapT = THREE.RepeatWrapping
+const grassRoughnessTexture = textureLoader.load('textures/grass/roughness.jpg')
+grassRoughnessTexture.repeat.set(8, 8)
+grassRoughnessTexture.wrapS = THREE.RepeatWrapping
+grassRoughnessTexture.wrapT = THREE.RepeatWrapping
 
 /**
  * Debug UI
  */
 
 const gui = new lil.GUI()
-gui.destroy()
 
 /**
  * Cursor
@@ -42,87 +72,135 @@ window.addEventListener('mousemove', (event) => {
 const scene = new THREE.Scene()
 
 /**
+ * Fog
+ */
+scene.fog = new THREE.Fog('#262837', 1, 15)
+
+/**
  * Lights
  */
-//ambient light
-const ambientLight = new THREE.AmbientLight(0xffffff, .5)
-const ambientLightFolder = gui.addFolder('Ambient light')
+//ambient
+const ambientLight = new THREE.AmbientLight(0xb9d5ff, .12)
+const ambientLightFolder = gui.addFolder('ambient light')
 ambientLightFolder.add(ambientLight, 'intensity', 0, 2)
 
-//directional light
-const directionalLight = new THREE.DirectionalLight(0xffffff, .5)
-directionalLight.position.set(2, 2, -1)
-directionalLight.castShadow = true
-directionalLight.shadow.mapSize.width = 1024
-directionalLight.shadow.mapSize.height = 1024
-directionalLight.shadow.camera.near = 1
-directionalLight.shadow.camera.far = 6
-directionalLight.shadow.camera.top = 2
-directionalLight.shadow.camera.right = 2
-directionalLight.shadow.camera.bottom = -2
-directionalLight.shadow.camera.left = -2
-directionalLight.shadow.radius = 10
-const directionalLightFolder = gui.addFolder('Directional light')
-directionalLightFolder.add(directionalLight.shadow, 'radius', 0, 30).name('Shadow radius')
+//moon
+const moonLight = new THREE.DirectionalLight(0xb9d5ff, .12)
+const moonFolder = gui.addFolder('Moon')
+moonFolder.add(moonLight, 'intensity', 0, 2)
+moonLight.position.set(4, 5, -2)
+const moonLightHelper = new THREE.DirectionalLightHelper(moonLight)
+moonLightHelper.visible = false
+moonFolder.add(moonLightHelper, 'visible').name('Helper visible')
+moonLight.castShadow = true
 
-//directional light helper
-const directionalLightHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
-directionalLightHelper.visible = false
-directionalLightFolder.add(directionalLightHelper, 'visible').name('Shadow helper visible')
-
-//spotlight
-const spotLight = new THREE.SpotLight(0xffffff, .5)
-spotLight.position.set(0,2,2)
-spotLight.visible = false
-
-const spotLightFolder = gui.addFolder('Spot light')
-
-spotLight.castShadow = true
-spotLight.shadow.mapSize.x = 1024
-spotLight.shadow.mapSize.y = 1024
-spotLight.shadow.camera.near = 1
-spotLight.shadow.camera.far = 6
-spotLight.shadow.camera.fov = 30
-
-//spotlight helper
-const spotLightHelper = new THREE.CameraHelper(spotLight.shadow.camera)
-spotLightHelper.visible = false
-spotLightFolder.add(spotLightHelper, 'visible').name('Shadow helper visible')
-
-scene.add(ambientLight, directionalLight, directionalLightHelper, spotLight, spotLightHelper)
+scene.add(ambientLight, moonLight, moonLightHelper)
 
 /**
  * Objects
  */
-const material = new THREE.MeshStandardMaterial({ metalness: .4, side: THREE.DoubleSide})
-
-//sphere
-const sphereGeometry = new THREE.SphereBufferGeometry(.5, 32, 32)
-const sphere = new THREE.Mesh(sphereGeometry, material)
-sphere.castShadow = true
-
-//shadow sphere
-const shadowGeometry = new THREE.PlaneBufferGeometry(1,1)
-const shadow = new THREE.Mesh(
-    shadowGeometry,
+//house
+const house = new THREE.Group()
+//walls
+const walls = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(4, 2.5 ,4),
     new THREE.MeshStandardMaterial({
-        color: 0x000000,
-        side: THREE.BackSide,
-        transparent: true,
-        alphaMap: bakedShadow
+        map: bricksColorTexture,
+        aoMap: bricksAmbientOcclusionTexture,
+        normalMap: bricksNormalTexture,
+        roughnessMap: bricksRoughnessTexture
     })
 )
-shadow.rotation.x = Math.PI * .5
+walls.geometry.attributes.uv2 = walls.geometry.attributes.uv
+walls.position.y = 2.5 / 2
+walls.castShadow = true
+
+//roof
+const roof = new THREE.Mesh(
+    new THREE.ConeBufferGeometry(3.5, 1.5, 4),
+    new THREE.MeshStandardMaterial({ color: 0xfb35f45 })
+)
+roof.position.y = 2.5 + (1.5 / 2)
+roof.rotation.y = Math.PI * .25
+
+//door
+const door = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(2.2, 2.2, 100, 100),
+    new THREE.MeshStandardMaterial({
+        map: doorColorTexture,
+        transparent: true,
+        alphaMap: doorAlphaTexture,
+        aoMap: doorAmbientOcclusionTexture,
+        displacementMap: doorHeightTexture,
+        displacementScale: .1,
+        metalnessMap: doorMetalnessTexture,
+        normalMap: doorNormalTexture,
+        roughnessMap: doorRoughnessTexture
+    })
+)
+door.geometry.attributes.uv2 = door.geometry.attributes.uv
+door.position.y = 1
+door.position.z = 2 + 0.01
+door.position.set(0, 1, 2 + 0.01)
+
+//doorLight
+const doorLight = new THREE.PointLight(0xff7d46, 1, 7)
+const doorLightFolder = gui.addFolder('door light')
+doorLight.position.set(0, 2.5, 2.3)
+const doorLightHelper = new THREE.PointLightHelper(doorLight, .1)
+doorLightHelper.visible = false
+doorLightFolder.add(doorLightHelper, 'visible').name('Helper visible')
+doorLight.castShadow = true
+
+//bushes
+const bushMaterial = new THREE.MeshStandardMaterial({color: 0x89c854})
+const bushGeometry = new THREE.SphereBufferGeometry(.5, 32, 16)
+
+const bush1 = new THREE.Mesh( bushGeometry, bushMaterial )
+bush1.position.set(1, 0, 2.3)
+bush1.scale.set(1, 1, 1)
+bush1.castShadow = true
+
+const bush2 = new THREE.Mesh( bushGeometry, bushMaterial )
+bush2.position.set(1.5, 0, 2)
+bush2.scale.set(.5, .5, .5)
+bush2.castShadow = true
+
+house.add(walls, roof, door, doorLight, doorLightHelper, bush1, bush2)
+
+//graves
+const graveGeometry = new THREE.BoxBufferGeometry(.5, .75, .25)
+const graveMaterial = new THREE.MeshStandardMaterial({
+    color: 'grey'
+})
+for(let i = 0; i < 50; i++) {
+    const grave = new THREE.Mesh(graveGeometry, graveMaterial)
+    const angle = Math.random() * Math.PI * 2
+    const radius = 4 + Math.random() * 6
+    grave.position.x = Math.sin(angle) * radius
+    grave.position.z = Math.cos(angle) * radius
+    grave.position.y = .75 * .5
+    grave.rotation.z = (Math.random() - .5) * 0.4
+    grave.rotation.y = (Math.random() - .5) * 0.4
+    scene.add(grave)
+    grave.castShadow = true
+}
 
 //ground
-const planeGeometry = new THREE.PlaneBufferGeometry(10, 10)
-const plane = new THREE.Mesh(planeGeometry, material)
-plane.rotation.x = Math.PI * 1.5
-plane.position.y = -.5
-plane.receiveShadow = true
+const floor = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(20, 20),
+    new THREE.MeshStandardMaterial({
+        map: grassColorTexture,
+        aoMap: grassAmbientOcclusionTexture,
+        normalMap: grassNormalTexture,
+        roughnessMap: grassRoughnessTexture
+    })
+)
+floor.geometry.attributes.uv2 = floor.geometry.attributes.uv
+floor.rotation.x = Math.PI * 1.5
+floor.receiveShadow = true
 
-shadow.position.y = plane.position.y + 0.01
-scene.add(sphere, shadow, plane)
+scene.add(house, floor)
 
 /**
  * sizes
@@ -167,7 +245,7 @@ window.addEventListener('dblclick', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 5
+camera.position.set(0, 2, 10)
 scene.add(camera)
 
 //controls
@@ -180,25 +258,17 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.shadowMap.enabled = false
+renderer.setClearColor('#262837')
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
 //clock
 const clock = new THREE.Clock()
-
 //animations
 
 const tick = () => {
     //time
     const elapsedTime = clock.getElapsedTime()
-
-    //update objects
-    sphere.position.x = Math.sin(elapsedTime * 2) * 2
-    sphere.position.z = Math.cos(elapsedTime * 2) * 2
-    sphere.position.y = Math.abs(Math.sin(elapsedTime * 3))
-
-    shadow.position.x = sphere.position.x
-    shadow.position.z = sphere.position.z
-    shadow.material.opacity = ( 1 - sphere.position.y ) * 0.5
 
     //damping
     controls.update()
