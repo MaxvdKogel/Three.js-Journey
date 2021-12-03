@@ -1,7 +1,6 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import gsap from 'gsap'
 import * as lil from 'lil-gui'
 
 /**
@@ -9,25 +8,40 @@ import * as lil from 'lil-gui'
  */
 
 const gui = new lil.GUI()
+gui.destroy()
 
 /**
  * Cursor
  */
-const cursor = {
-    x: 0,
-    y: 0
-}
+const cursor = new THREE.Vector2()
 
 window.addEventListener('mousemove', (event) => {
-    cursor.x = event.clientX / sizes.width - 0.5
-    cursor.y = -(event.clientY / sizes.height - 0.5)
+    cursor.x = event.clientX / sizes.width * 2 - 1
+    cursor.y = -(event.clientY / sizes.height * 2 - 1)
+})
+
+window.addEventListener('click', () => {
+    if(currentIntersect) {
+        switch(currentIntersect.object) {
+            case sphere1:
+                console.log('sphere1 click')
+                break
+    
+            case sphere2:
+                console.log('sphere2 click')
+                break
+            
+            case sphere3:
+                console.log('sphere3 click')
+                break
+        }
+    }
 })
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-const particleTexture = textureLoader.load('/textures/particles/9.png')
 
 /**
  * Base
@@ -38,85 +52,25 @@ const particleTexture = textureLoader.load('/textures/particles/9.png')
 const scene = new THREE.Scene()
 
 /**
- * Galaxy
+ * objects
  */
-const parameters =  {
-    count: 100000,
-    size: .01,
-    radius: 5,
-    branches: 3,
-    spin: 1,
-    randomnessPower: 3,
-    colorInside: 0xff6030,
-    colorOutside: 0x1b3984
-}
+const geometry = new THREE.SphereBufferGeometry(.5, 32, 32)
 
-let geometry = null
-let material = null
-let particle = null
+const sphere1 = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }))
+sphere1.position.x = -2
 
-const generateGalaxy = () => {
+const sphere2 = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }))
 
-    if(particle !== null) {
-        geometry.dispose()
-        material.dispose()
-        scene.remove(particle)
-    }
+const sphere3 = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }))
+sphere3.position.x = 2
 
-    geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(parameters.count * 3)
-    const colors = new Float32Array(parameters.count * 3)
-    const colorInside = new THREE.Color(parameters.colorInside)
-    const colorOutside = new THREE.Color(parameters.colorOutside)
+scene.add(sphere1, sphere2, sphere3)
 
-    for(let i = 0; i < parameters.count; i++) {
-        const i3 = i * 3
-
-        //position
-        const radius = Math.random() * parameters.radius
-        const spinAngle = radius * parameters.spin
-        const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2
-        
-        // const randomX = (Math.random() - .5) * parameters.randomness * radius
-        const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < .5 ? 1 : -1)
-        const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < .5 ? 1 : -1)
-        const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < .5 ? 1 : -1)
-
-        positions[i3    ] = Math.cos(branchAngle + spinAngle) * radius, + randomX
-        positions[i3 + 1] = randomY
-        positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
-
-        //color
-        const mixedColor = colorInside.clone()
-        mixedColor.lerp(colorOutside, radius / parameters.radius)
-
-        colors[i3    ] = mixedColor.r
-        colors[i3 + 1] = mixedColor.g
-        colors[i3 + 2] = mixedColor.b
-    }
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    material = new THREE.PointsMaterial({
-        size: parameters.size,
-        sizeAttenuation: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexColors: true
-    })
-    particle = new THREE.Points(geometry, material)
-    scene.add(particle)
-}
-
-generateGalaxy()
-
-gui.add(parameters, 'count', 100, 100000, 100).onFinishChange(generateGalaxy)
-gui.add(parameters, 'size', .001, .1, .0001).onFinishChange(generateGalaxy)
-gui.add(parameters, 'radius', 1, 10, .01).onFinishChange(generateGalaxy)
-gui.add(parameters, 'branches', 3, 10, 1).onFinishChange(generateGalaxy)
-gui.add(parameters, 'spin', 0, 5, 1).onFinishChange(generateGalaxy)
-gui.add(parameters, 'randomnessPower', 0, 10).onFinishChange(generateGalaxy)
-gui.addColor(parameters, 'colorInside').onFinishChange(generateGalaxy)
-gui.addColor(parameters, 'colorOutside').onFinishChange(generateGalaxy)
+/**
+ * Raycaster
+ */
+const raycaster = new THREE.Raycaster()
+let currentIntersect = null
 
 /**
  * sizes
@@ -161,7 +115,7 @@ window.addEventListener('dblclick', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(3, 3, 5)
+camera.position.z = 5
 scene.add(camera)
 
 //controls
@@ -183,9 +137,38 @@ const tick = () => {
     //time
     const elapsedTime = clock.getElapsedTime()
 
-    //animation
-    particle.rotation.y = elapsedTime * .1
-    particle.rotation.z = elapsedTime * .01
+    //animate objects
+    sphere1.position.y = Math.sin(elapsedTime * .3)
+    sphere2.position.y = Math.sin(elapsedTime * .8) * 1.5
+    sphere3.position.y = Math.sin(elapsedTime * 1.2) * 1.5
+
+    //raycaster
+    raycaster.setFromCamera(cursor, camera)
+
+    const spheres = [sphere1, sphere2, sphere3]
+    const intersects = raycaster.intersectObjects(spheres)
+
+    for(const sphere of spheres) {
+        sphere.material.color.set('#ff0000')
+    }
+
+    for(const intersect of intersects) {
+        intersect.object.material.color.set('#0000ff')
+    }
+
+    if(intersects.length) {
+        if(!currentIntersect) {
+            console.log('mouse enter')
+        }
+        currentIntersect = intersects[0]
+    }
+    else
+    {
+        if(currentIntersect) {
+            console.log('mouse leave')
+        }
+        currentIntersect = null
+    }
 
     //damping
     controls.update()
