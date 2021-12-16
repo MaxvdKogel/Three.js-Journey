@@ -1,21 +1,67 @@
 import './style.css'
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as lil from 'lil-gui'
-import gsap from 'gsap'
-import { ScrollTrigger } from "gsap/ScrollTrigger"
-gsap.registerPlugin(ScrollTrigger)
+import * as CANNON from 'cannon-es'
 
 /**
  * Debug UI
  */
 
 const gui = new lil.GUI()
+const debugObject = {}
+
+debugObject.createSphere = () => {
+    createSphere(Math.random() * .5, {
+        x: (Math.random() - .5) * 3,
+        y: 3,
+        z: (Math.random() - .5) * 3
+    })
+}
+gui.add(debugObject, 'createSphere')
+
+debugObject.createBox = () => {
+    createBox(Math.random(), Math.random(), Math.random(), {
+        x: (Math.random() - .5) * 3,
+        y: 3,
+        z: (Math.random() - .5) * 3
+    })
+}
+gui.add(debugObject, 'createBox')
+
+debugObject.reset = () => {
+    for(const object of objectsToUpdate) {
+        //remove body
+        object.body.removeEventListener('collide', playHitSound)
+        world.remove(object.body)
+
+        //remove mesh
+        scene.remove(object.mesh)
+    }
+}
+gui.add(debugObject, 'reset')
+
+
+/**
+ * Sounds
+ */
+const hitSound = new Audio('/sounds/hit.mp3')
+const playHitSound = (collision) => {
+    const strength = collision.contact.getImpactVelocityAlongNormal()
+    if(strength > 1.5) {
+        function clamp(val, min, max) {
+            return val > max ? max : val < min ? min : val;
+        }
+        hitSound.volume = clamp((Math.random() * strength) / 10, 0, 1)
+        hitSound.currentTime = 0
+        hitSound.play()
+    }
+}
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-const gradient = textureLoader.load('textures/gradients/3.jpg')
 
 /**
  * Base
@@ -24,11 +70,6 @@ const gradient = textureLoader.load('textures/gradients/3.jpg')
 
 //scene
 const scene = new THREE.Scene()
-
-//scroll
-window.addEventListener('scroll', () => {
-    let scrollY = window.scrollY
-})
 
 //cursor 
 const cursor = {
@@ -42,101 +83,61 @@ window.addEventListener('mousemove', (event) => {
 })
 
 /**
+ * Physics world
+ */
+const world = new CANNON.World()
+world.broadphase = new CANNON.SAPBroadphase(world)
+world.allowSleep = true
+world.gravity.set(0, -9.82, 0)
+
+const defaultMaterial = new CANNON.Material('default')
+
+const defaultContactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+    friction: .1,
+    restitution: .7
+})
+world.addContactMaterial(defaultContactMaterial)
+world.defaultContactMaterial = defaultContactMaterial
+
+const floorBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(0, -.5, 0),
+    shape: new CANNON.Plane()
+})
+floorBody.quaternion.setFromAxisAngle(
+    new CANNON.Vec3(-1, 0, 0),
+    Math.PI * .5
+)
+world.addBody(floorBody)
+
+/**
  * objects
  */
-gradient.magFilter = THREE.NearestFilter
-const material = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient })
-const objectsDistance = 6
 
-const mesh1 = new THREE.Mesh(
-    new THREE.TorusBufferGeometry(1, .4, 16, 60),
-    material
+const plane = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(10, 10),
+    new THREE.MeshStandardMaterial({
+        color: 'grey',
+        side: THREE.DoubleSide,
+    })
 )
-mesh1.position.x = 3
+plane.receiveShadow = true
+plane.rotation.x = Math.PI * .5
+plane.position.y = -.5
 
-const mesh2 = new THREE.Mesh(
-    new THREE.ConeBufferGeometry(1, 2, 32),
-    material
-)
-
-mesh2.position.set(-3, -objectsDistance, 0)
-
-const mesh3 = new THREE.Mesh(
-    new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
-    material
-)
-
-mesh3.position.set(3, -objectsDistance * 2, 0)
-
-const sectionMeshes = [mesh1, mesh2, mesh3]
-scene.add(mesh1, mesh2, mesh3)
-
-gui.addColor(material, 'color')
-
-//particles
-const particlesCount = 200
-const particleGeometry = new THREE.BufferGeometry()
-const positions = new Float32Array(particlesCount * 3)
-
-for(let i = 0; i < particlesCount; i++) {
-    const i3 = i * 3
-    positions[i3    ] = (Math.random() - .5) * 15
-    positions[i3 + 1] = objectsDistance * .5 - Math.random() * objectsDistance * sectionMeshes.length
-    positions[i3 + 2] = Math.random() * -5
-}
-particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-const particleMaterial = new THREE.PointsMaterial({
-    color: 0xffffff,
-    sizeAttenuation: true,
-    size: .03
-})
-
-const particles = new THREE.Points(particleGeometry, particleMaterial)
-scene.add(particles)
+scene.add(plane)
 
 /**
  * Lights
  */
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-directionalLight.position.set(2, 2, 0)
-scene.add(directionalLight)
+directionalLight.position.set(5, 5, 0)
+directionalLight.castShadow = true
+directionalLight.shadow.mapSize.set(1024, 1024)
 
-/**
- * Gsap
- */
-gsap.to(mesh1.rotation, {
-    scrollTrigger: {
-        trigger: '.hero',
-        scrub: .2,
-    },
-    y: '+=6.28',
-    ease: 'power2.inOut'
-})
-
-gsap.to(mesh2.rotation, {
-    scrollTrigger: {
-        trigger: '.right',
-        start: "top 75%",
-        end: "top 25%",
-        scrub: .2,
-    },
-    x: '+=3.5',
-    ease: 'power2.inOut'
-})
-
-window.addEventListener("load", function() {
-    gsap.to(mesh3.rotation, {
-        scrollTrigger: {
-            trigger: '.contact',
-            start: 'top 80%',
-            end: 'bottom bottom',
-            scrub: .2,
-        },
-        y: '+=4',
-        ease: 'power2.inOut'
-    })
-})
+const ambientLight = new THREE.AmbientLight(0xffffff, .6)
+scene.add(directionalLight, ambientLight)
 
 /**
  * sizes
@@ -162,20 +163,74 @@ window.addEventListener('resize', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 5
+camera.position.set(0, 1, 5)
 scene.add(camera)
-
-const cameraGroup = new THREE.Group()
-cameraGroup.add(camera)
-scene.add(cameraGroup)
 
 //renderer
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    alpha: true
+    canvas: canvas
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.shadowMap.enabled = true
+
+//controls
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+
+//Utils
+const objectsToUpdate = []
+
+const material = new THREE.MeshStandardMaterial({ color: 0xffffff })
+
+const sphereGeometry = new THREE.SphereBufferGeometry(1, 32, 32)
+const createSphere = (radius, position) => {
+    //create sphere
+    const mesh = new THREE.Mesh(sphereGeometry, material)
+    mesh.castShadow = true
+    mesh.position.copy(position)
+    mesh.scale.set(radius, radius, radius)
+    scene.add(mesh)
+
+    //create sphere in physics world
+    const body = new CANNON.Body({
+        mass: 1,
+        shape: new CANNON.Sphere(radius)
+    })
+    body.position.copy(mesh.position)
+    body.addEventListener('collide', playHitSound)
+    world.addBody(body)
+
+    //save the mesh and body
+    objectsToUpdate.push({
+        mesh,
+        body
+    })
+}
+createSphere(.5, { x: 0, y: 3, z: 0})
+
+const boxGeometry = new THREE.BoxBufferGeometry(1,1,1)
+const createBox = (width, height, depth, position) => {
+    const mesh = new THREE.Mesh(boxGeometry, material)
+    mesh.position.copy(position)
+    mesh.scale.set(width, height, depth)
+    scene.add(mesh)
+
+    //physics world
+    const body = new CANNON.Body({
+        mass: 1,
+        shape: new CANNON.Box(new CANNON.Vec3(width * .5, height * .5, depth * .5))
+    })
+    body.position.copy(mesh.position)
+    body.addEventListener('collide', playHitSound)
+    world.addBody(body)
+
+    //save in array
+    objectsToUpdate.push({
+        mesh,
+        body
+    })
+}
 
 //clock
 const clock = new THREE.Clock()
@@ -188,19 +243,15 @@ const tick = () => {
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
 
-    //objects
-    for(const mesh of sectionMeshes) {
-        mesh.rotation.x += deltaTime * .1
-        mesh.rotation.y += deltaTime * .12
+    //physics
+    for(const object of objectsToUpdate) {
+        object.mesh.position.copy(object.body.position)
+        object.mesh.quaternion.copy(object.body.quaternion)
     }
+    world.step(1/60, deltaTime, 3)
 
     //camera
-    camera.position.y = -scrollY / sizes.height * objectsDistance
-    
-    const parallaxX = cursor.x
-    const parallaxY = cursor.y
-    cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 5 * deltaTime
-    cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 5 * deltaTime
+    controls.update()
 
     //render
     renderer.render(scene, camera)

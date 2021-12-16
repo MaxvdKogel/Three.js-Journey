@@ -5,7 +5,7 @@
 }
 
 html {
-    background: #1e1a20;
+    background: black;
 }
 
 .webgl {
@@ -14,24 +14,4 @@ html {
     left: 0;
     outline: none;
     z-index: -1;
-}
-
-section {
-    height: 100vh;
-    text-transform: uppercase;
-    font-family: Arial, Helvetica, sans-serif;
-    color: white;
-    font-size: 7vmin;
-    display: flex;
-    align-items: center;
-}
-
-h1 {
-    margin-left: 15vw;
-}
-
-.right {
-    text-align: right;
-    width: 100%;
-    margin-right: 15vw;
 }
