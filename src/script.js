@@ -3,13 +3,17 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as lil from 'lil-gui'
 import * as CANNON from 'cannon-es'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 /**
  * Debug UI
  */
 
 const gui = new lil.GUI()
-const debugObject = {}
+const debugObject = {
+    survey: false
+}
 
 debugObject.createSphere = () => {
     createSphere(Math.random() * .5, {
@@ -33,7 +37,7 @@ debugObject.reset = () => {
     for(const object of objectsToUpdate) {
         //remove body
         object.body.removeEventListener('collide', playHitSound)
-        world.remove(object.body)
+        world.removeBody(object.body)
 
         //remove mesh
         scene.remove(object.mesh)
@@ -101,7 +105,7 @@ world.defaultContactMaterial = defaultContactMaterial
 
 const floorBody = new CANNON.Body({
     mass: 0,
-    position: new CANNON.Vec3(0, -.5, 0),
+    position: new CANNON.Vec3(0, 0, 0),
     shape: new CANNON.Plane()
 })
 floorBody.quaternion.setFromAxisAngle(
@@ -109,6 +113,98 @@ floorBody.quaternion.setFromAxisAngle(
     Math.PI * .5
 )
 world.addBody(floorBody)
+
+/**
+ * Models
+ */
+const dracoLoader = new DRACOLoader()
+dracoLoader.setDecoderPath('/draco/')
+
+const gltfLoader = new GLTFLoader()
+gltfLoader.setDRACOLoader(dracoLoader)
+
+//duck
+// gltfLoader.load('/models/Duck/glTF-Draco/Duck.gltf',
+// (duck) => {
+//     duck.scene.children[0].rotation.y = -Math.PI * .5
+//     duck.scene.children[0].position.set(2, -.1, 0)
+//     scene.add(duck.scene.children[0])
+// })
+
+//flight helmet
+// gltfLoader.load('/models/FlightHelmet/glTF/FlightHelmet.gltf',
+// (flightHelmet) => {
+//     scene.add(flightHelmet.scene)
+// },
+// (progress) => {
+//     console.log('loading')
+// },
+// (error) => {
+//     console.log('error')
+// })
+
+// Fox
+let mixer,
+    surveyAction,
+    walkAction,
+    runAction
+
+gltfLoader.load('/models/Fox/glTF/Fox.gltf',
+(fox) => {
+    mixer = new THREE.AnimationMixer(fox.scene)
+    surveyAction = mixer.clipAction(fox.animations[0])
+    walkAction = mixer.clipAction(fox.animations[1])
+    runAction = mixer.clipAction(fox.animations[2])
+    surveyGUI(surveyAction)
+    walkGUI(walkAction)
+    runGUI(runAction)
+    scene.add(fox.scene)
+    fox.scene.scale.set(0.025, 0.025, 0.025)
+})
+
+//GUI animations
+const animations = gui.addFolder('animations')
+
+let survey, walk, run = false
+
+const surveyGUI = (animation) => {
+    debugObject.survey = () => {
+        if(survey == true) {
+            animation.stop()
+            survey = false
+        } else {
+            animation.play()
+            survey = true
+        }
+    }
+    animations.add(debugObject, 'survey')
+}
+
+const walkGUI = (animation) => {
+    debugObject.walk = () => {
+        if(walk == true) {
+            animation.stop()
+            walk = false
+        } else {
+            animation.play()
+            walk = true
+        }
+    }
+    animations.add(debugObject, 'walk')
+}
+
+const runGUI = (animation) => {
+    debugObject.run = () => {
+        if(run == true) {
+            animation.stop()
+            run = false
+        } else {
+            animation.play()
+            run = true
+        }
+    }
+    animations.add(debugObject, 'run')
+}
 
 /**
  * objects
@@ -123,7 +219,6 @@ const plane = new THREE.Mesh(
 )
 plane.receiveShadow = true
 plane.rotation.x = Math.PI * .5
-plane.position.y = -.5
 
 scene.add(plane)
 
@@ -163,7 +258,7 @@ window.addEventListener('resize', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 1, 5)
+camera.position.set(0, 2.5, 7.5)
 scene.add(camera)
 
 //renderer
@@ -207,7 +302,6 @@ const createSphere = (radius, position) => {
         body
     })
 }
-createSphere(.5, { x: 0, y: 3, z: 0})
 
 const boxGeometry = new THREE.BoxBufferGeometry(1,1,1)
 const createBox = (width, height, depth, position) => {
@@ -249,6 +343,11 @@ const tick = () => {
         object.mesh.quaternion.copy(object.body.quaternion)
     }
     world.step(1/60, deltaTime, 3)
+
+    //mixer
+    if(mixer) {
+        mixer.update(deltaTime)
+    }
 
     //camera
     controls.update()
