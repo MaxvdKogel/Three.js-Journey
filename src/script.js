@@ -34,7 +34,7 @@ debugObject.createBox = () => {
 gui.add(debugObject, 'createBox')
 
 debugObject.reset = () => {
-    for(const object of objectsToUpdate) {
+    for (const object of objectsToUpdate) {
         //remove body
         object.body.removeEventListener('collide', playHitSound)
         world.removeBody(object.body)
@@ -52,7 +52,7 @@ gui.add(debugObject, 'reset')
 const hitSound = new Audio('/sounds/hit.mp3')
 const playHitSound = (collision) => {
     const strength = collision.contact.getImpactVelocityAlongNormal()
-    if(strength > 1.5) {
+    if (strength > 1.5) {
         function clamp(val, min, max) {
             return val > max ? max : val < min ? min : val;
         }
@@ -70,7 +70,7 @@ const textureLoader = new THREE.TextureLoader()
 /**
  * Base
  */
- const canvas = document.querySelector('.webgl')
+const canvas = document.querySelector('.webgl')
 
 //scene
 const scene = new THREE.Scene()
@@ -123,88 +123,12 @@ dracoLoader.setDecoderPath('/draco/')
 const gltfLoader = new GLTFLoader()
 gltfLoader.setDRACOLoader(dracoLoader)
 
-//duck
-// gltfLoader.load('/models/Duck/glTF-Draco/Duck.gltf',
-// (duck) => {
-//     duck.scene.children[0].rotation.y = -Math.PI * .5
-//     duck.scene.children[0].position.set(2, -.1, 0)
-//     scene.add(duck.scene.children[0])
-// })
-
-//flight helmet
-// gltfLoader.load('/models/FlightHelmet/glTF/FlightHelmet.gltf',
-// (flightHelmet) => {
-//     scene.add(flightHelmet.scene)
-// },
-// (progress) => {
-//     console.log('loading')
-// },
-// (error) => {
-//     console.log('error')
-// })
-
-// Fox
-let mixer,
-    surveyAction,
-    walkAction,
-    runAction
-
-gltfLoader.load('/models/Fox/glTF/Fox.gltf',
-(fox) => {
-    mixer = new THREE.AnimationMixer(fox.scene)
-    surveyAction = mixer.clipAction(fox.animations[0])
-    walkAction = mixer.clipAction(fox.animations[1])
-    runAction = mixer.clipAction(fox.animations[2])
-    surveyGUI(surveyAction)
-    walkGUI(walkAction)
-    runGUI(runAction)
-    scene.add(fox.scene)
-    fox.scene.scale.set(0.025, 0.025, 0.025)
+gltfLoader.load('/models/hamburger.glb',
+(hamburger) => {
+    scene.add(hamburger.scene)
+    hamburger.scene.scale.set(0.25, 0.25, 0.25)
+    console.log(hamburger);
 })
-
-//GUI animations
-const animations = gui.addFolder('animations')
-
-let survey, walk, run = false
-
-const surveyGUI = (animation) => {
-    debugObject.survey = () => {
-        if(survey == true) {
-            animation.stop()
-            survey = false
-        } else {
-            animation.play()
-            survey = true
-        }
-    }
-    animations.add(debugObject, 'survey')
-}
-
-const walkGUI = (animation) => {
-    debugObject.walk = () => {
-        if(walk == true) {
-            animation.stop()
-            walk = false
-        } else {
-            animation.play()
-            walk = true
-        }
-    }
-    animations.add(debugObject, 'walk')
-}
-
-const runGUI = (animation) => {
-    debugObject.run = () => {
-        if(run == true) {
-            animation.stop()
-            run = false
-        } else {
-            animation.play()
-            run = true
-        }
-    }
-    animations.add(debugObject, 'run')
-}
 
 /**
  * objects
@@ -303,7 +227,7 @@ const createSphere = (radius, position) => {
     })
 }
 
-const boxGeometry = new THREE.BoxBufferGeometry(1,1,1)
+const boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1)
 const createBox = (width, height, depth, position) => {
     const mesh = new THREE.Mesh(boxGeometry, material)
     mesh.position.copy(position)
@@ -338,16 +262,11 @@ const tick = () => {
     previousTime = elapsedTime
 
     //physics
-    for(const object of objectsToUpdate) {
+    for (const object of objectsToUpdate) {
         object.mesh.position.copy(object.body.position)
         object.mesh.quaternion.copy(object.body.quaternion)
     }
-    world.step(1/60, deltaTime, 3)
-
-    //mixer
-    if(mixer) {
-        mixer.update(deltaTime)
-    }
+    world.step(1 / 60, deltaTime, 3)
 
     //camera
     controls.update()
