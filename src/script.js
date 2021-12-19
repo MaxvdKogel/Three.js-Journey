@@ -2,70 +2,25 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as lil from 'lil-gui'
-import * as CANNON from 'cannon-es'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 /**
  * Debug UI
  */
-
 const gui = new lil.GUI()
-const debugObject = {
-    survey: false
-}
-
-debugObject.createSphere = () => {
-    createSphere(Math.random() * .5, {
-        x: (Math.random() - .5) * 3,
-        y: 3,
-        z: (Math.random() - .5) * 3
-    })
-}
-gui.add(debugObject, 'createSphere')
-
-debugObject.createBox = () => {
-    createBox(Math.random(), Math.random(), Math.random(), {
-        x: (Math.random() - .5) * 3,
-        y: 3,
-        z: (Math.random() - .5) * 3
-    })
-}
-gui.add(debugObject, 'createBox')
-
-debugObject.reset = () => {
-    for (const object of objectsToUpdate) {
-        //remove body
-        object.body.removeEventListener('collide', playHitSound)
-        world.removeBody(object.body)
-
-        //remove mesh
-        scene.remove(object.mesh)
-    }
-}
-gui.add(debugObject, 'reset')
-
+const debugObject = {}
 
 /**
- * Sounds
+ * Loaders
  */
-const hitSound = new Audio('/sounds/hit.mp3')
-const playHitSound = (collision) => {
-    const strength = collision.contact.getImpactVelocityAlongNormal()
-    if (strength > 1.5) {
-        function clamp(val, min, max) {
-            return val > max ? max : val < min ? min : val;
-        }
-        hitSound.volume = clamp((Math.random() * strength) / 10, 0, 1)
-        hitSound.currentTime = 0
-        hitSound.play()
-    }
-}
+const dracoLoader = new DRACOLoader()
+dracoLoader.setDecoderPath('/draco/')
 
-/**
- * Textures
- */
-const textureLoader = new THREE.TextureLoader()
+const gltfLoader = new GLTFLoader()
+gltfLoader.setDRACOLoader(dracoLoader)
+
+const cubeTextureLoader = new THREE.CubeTextureLoader()
 
 /**
  * Base
@@ -75,88 +30,66 @@ const canvas = document.querySelector('.webgl')
 //scene
 const scene = new THREE.Scene()
 
-//cursor 
-const cursor = {
-    x: 0,
-    y: 0
+/**
+ * Update all materials
+ */
+const updateAllMaterials = () => {
+    scene.traverse((child) => {
+        if(child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+            child.material.envMapIntensity = debugObject.envMapIntensity
+            child.castShadow = true
+            child.receiveShadow = true
+        }
+    })
 }
 
-window.addEventListener('mousemove', (event) => {
-    cursor.x = event.clientX / sizes.width - .5
-    cursor.y = -(event.clientY / sizes.height - .5)
-})
-
 /**
- * Physics world
+ * environment Map
  */
-const world = new CANNON.World()
-world.broadphase = new CANNON.SAPBroadphase(world)
-world.allowSleep = true
-world.gravity.set(0, -9.82, 0)
+const environmentMap = scene.background = scene.environment = cubeTextureLoader
+    .setPath('/textures/environmentMaps/0/')
+    .load([
+        'px.jpg',
+        'nx.jpg',
+        'py.jpg',
+        'ny.jpg',
+        'pz.jpg',
+        'nz.jpg'
+    ])
+environmentMap.encoding = THREE.sRGBEncoding
 
-const defaultMaterial = new CANNON.Material('default')
-
-const defaultContactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-    friction: .1,
-    restitution: .7
-})
-world.addContactMaterial(defaultContactMaterial)
-world.defaultContactMaterial = defaultContactMaterial
-
-const floorBody = new CANNON.Body({
-    mass: 0,
-    position: new CANNON.Vec3(0, 0, 0),
-    shape: new CANNON.Plane()
-})
-floorBody.quaternion.setFromAxisAngle(
-    new CANNON.Vec3(-1, 0, 0),
-    Math.PI * .5
-)
-world.addBody(floorBody)
+debugObject.envMapIntensity = 5
+const environmentMapFolder = gui.addFolder('environmentMap')
+environmentMapFolder.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
 
 /**
  * Models
  */
-const dracoLoader = new DRACOLoader()
-dracoLoader.setDecoderPath('/draco/')
 
-const gltfLoader = new GLTFLoader()
-gltfLoader.setDRACOLoader(dracoLoader)
-
-gltfLoader.load('/models/hamburger.glb',
-(hamburger) => {
-    scene.add(hamburger.scene)
-    hamburger.scene.scale.set(0.25, 0.25, 0.25)
-    console.log(hamburger);
+gltfLoader.load('/models/FlightHelmet/glTF/FlightHelmet.gltf',
+(flightHelmet) => {
+    flightHelmet.scene.scale.set(5,5,5)
+    scene.add(flightHelmet.scene)
+    updateAllMaterials()
 })
-
-/**
- * objects
- */
-
-const plane = new THREE.Mesh(
-    new THREE.PlaneBufferGeometry(10, 10),
-    new THREE.MeshStandardMaterial({
-        color: 'grey',
-        side: THREE.DoubleSide,
-    })
-)
-plane.receiveShadow = true
-plane.rotation.x = Math.PI * .5
-
-scene.add(plane)
 
 /**
  * Lights
  */
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-directionalLight.position.set(5, 5, 0)
+directionalLight.position.set(.25, 3, -2.5)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.set(1024, 1024)
+directionalLight.shadow.camera.far = 10
 
-const ambientLight = new THREE.AmbientLight(0xffffff, .6)
-scene.add(directionalLight, ambientLight)
+const directionalLightFolder = gui.addFolder('directionalLight')
+directionalLightFolder.add(directionalLight, 'intensity').min(0).max(10).step(0.001)
+directionalLightFolder.add(directionalLight.position, 'x').min(-5).max(5).step(0.001)
+directionalLightFolder.add(directionalLight.position, 'y').min(-5).max(5).step(0.001)
+directionalLightFolder.add(directionalLight.position, 'z').min(-5).max(5).step(0.001)
+
+scene.add(directionalLight)
 
 /**
  * sizes
@@ -182,73 +115,37 @@ window.addEventListener('resize', () => {
 
 //camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 2.5, 7.5)
+camera.position.set(0, 3, 5)
 scene.add(camera)
 
 //renderer
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: true
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.physicallyCorrectLights = true
+renderer.outputEncoding = THREE.sRGBEncoding
+renderer.toneMapping = THREE.ReinhardToneMapping
+renderer.toneMappingExposure = 3
 
-//controls
+const toneMappingFolder = gui.addFolder('toneMapping')
+toneMappingFolder.add(renderer, 'toneMapping', {
+    No: THREE.NoToneMapping,
+    Linear: THREE.LinearToneMapping,
+    ReinhardToneMapping: THREE.ReinhardToneMapping,
+    Cineon: THREE.CineonToneMapping,
+    ACESFILM: THREE.ACESFilmicToneMapping
+})
+toneMappingFolder.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001)
+
+// controls
 const controls = new OrbitControls(camera, renderer.domElement)
+controls.target = new THREE.Vector3(0, 2, 0)
 controls.enableDamping = true
-
-//Utils
-const objectsToUpdate = []
-
-const material = new THREE.MeshStandardMaterial({ color: 0xffffff })
-
-const sphereGeometry = new THREE.SphereBufferGeometry(1, 32, 32)
-const createSphere = (radius, position) => {
-    //create sphere
-    const mesh = new THREE.Mesh(sphereGeometry, material)
-    mesh.castShadow = true
-    mesh.position.copy(position)
-    mesh.scale.set(radius, radius, radius)
-    scene.add(mesh)
-
-    //create sphere in physics world
-    const body = new CANNON.Body({
-        mass: 1,
-        shape: new CANNON.Sphere(radius)
-    })
-    body.position.copy(mesh.position)
-    body.addEventListener('collide', playHitSound)
-    world.addBody(body)
-
-    //save the mesh and body
-    objectsToUpdate.push({
-        mesh,
-        body
-    })
-}
-
-const boxGeometry = new THREE.BoxBufferGeometry(1, 1, 1)
-const createBox = (width, height, depth, position) => {
-    const mesh = new THREE.Mesh(boxGeometry, material)
-    mesh.position.copy(position)
-    mesh.scale.set(width, height, depth)
-    scene.add(mesh)
-
-    //physics world
-    const body = new CANNON.Body({
-        mass: 1,
-        shape: new CANNON.Box(new CANNON.Vec3(width * .5, height * .5, depth * .5))
-    })
-    body.position.copy(mesh.position)
-    body.addEventListener('collide', playHitSound)
-    world.addBody(body)
-
-    //save in array
-    objectsToUpdate.push({
-        mesh,
-        body
-    })
-}
 
 //clock
 const clock = new THREE.Clock()
@@ -260,13 +157,6 @@ const tick = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
-
-    //physics
-    for (const object of objectsToUpdate) {
-        object.mesh.position.copy(object.body.position)
-        object.mesh.quaternion.copy(object.body.quaternion)
-    }
-    world.step(1 / 60, deltaTime, 3)
 
     //camera
     controls.update()
