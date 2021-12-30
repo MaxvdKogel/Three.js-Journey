@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../Experience'
 import Environment from './Environment'
-import Flag from './Flag'
+import Plane from './Plane'
 
 export default class World {
     constructor() {
@@ -10,14 +10,6 @@ export default class World {
         this.resources = this.experience.resources
         this.time = this.experience.time
         this.environment = new Environment()
-        
-        //Wait for resources
-        this.resources.on('ready', () => {
-            this.flag = new Flag()
-
-            this.time.on('tick', () => {
-                this.flag.update()
-            })
-        })
+        this.plane = new Plane()
     }
 }
