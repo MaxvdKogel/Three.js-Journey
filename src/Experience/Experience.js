@@ -7,6 +7,7 @@ import World from './World/World'
 import sources from './sources'
 import Resources from './Utils/Resources'
 import Debug from './Utils/Debug'
+import { Vector3 } from 'three'
 
 let instance = null
 
@@ -46,5 +47,6 @@ export default class Experience {
     update() {
         this.camera.update()
         this.renderer.update()
+        this.world.update()
     }
 }
